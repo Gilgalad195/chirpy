@@ -10,6 +10,7 @@ type cleaned struct {
 type errorResp struct {
 	Error string `json:"error"`
 }
-type validResp struct {
-	Valid bool `json:"valid"`
-}
+
+// type validResp struct {
+// 	Valid bool `json:"valid"`
+// }
