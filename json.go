@@ -1,11 +1,17 @@
 package main
 
-type parameters struct {
-	Body string `json:"body"`
+import (
+	"github.com/google/uuid"
+)
+
+type chirpParams struct {
+	Body   string    `json:"body"`
+	UserID uuid.UUID `json:"user_id"`
 }
 
-type cleaned struct {
-	CleanedBody string `json:"cleaned_body"`
+type cleanedChirp struct {
+	CleanedBody string    `json:"cleaned_body"`
+	UserID      uuid.UUID `json:"user_id"`
 }
 type errorResp struct {
 	Error string `json:"error"`
