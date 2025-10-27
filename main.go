@@ -15,6 +15,7 @@ import (
 type apiConfig struct {
 	fileserverHits atomic.Int32
 	queries        *database.Queries
+	platform       string
 }
 
 func main() {
@@ -24,6 +25,7 @@ func main() {
 
 	godotenv.Load()
 	dbURL := os.Getenv("DB_URL")
+	apiCfg.platform = os.Getenv("PLATFORM")
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Printf("Unable to connect to database: %s", err)
@@ -36,6 +38,7 @@ func main() {
 	mux.HandleFunc("GET /admin/metrics", apiCfg.countHandler)
 	mux.HandleFunc("POST /admin/reset", apiCfg.resetHandler)
 	mux.HandleFunc("POST /api/validate_chirp", validateHandler)
+	mux.HandleFunc("POST /api/users", apiCfg.createUserHandler)
 
 	h := http.FileServer(http.Dir(filepathRoot))
 	mux.Handle("/app/", http.StripPrefix("/app", apiCfg.middlewareMetricsInc(h)))
