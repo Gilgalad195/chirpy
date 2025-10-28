@@ -39,7 +39,8 @@ func main() {
 	mux.HandleFunc("POST /admin/reset", apiCfg.resetHandler)
 	mux.HandleFunc("POST /api/users", apiCfg.createUserHandler)
 	mux.HandleFunc("POST /api/chirps", apiCfg.chirpHandler)
-	mux.HandleFunc("GET /api/chirps", apiCfg.getChirpsHandler)
+	mux.HandleFunc("GET /api/chirps", apiCfg.getAllChirpsHandler)
+	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.getChirpHandler)
 
 	h := http.FileServer(http.Dir(filepathRoot))
 	mux.Handle("/app/", http.StripPrefix("/app", apiCfg.middlewareMetricsInc(h)))

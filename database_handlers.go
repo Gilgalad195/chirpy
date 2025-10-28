@@ -1,7 +1,9 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"time"
@@ -30,18 +32,14 @@ func (c *apiConfig) createUserHandler(w http.ResponseWriter, r *http.Request) {
 	err := decoder.Decode(&userEmail)
 	if err != nil {
 		log.Printf("Error decoding parameters: %s", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"error":"Something went wrong"}`))
+		writeJSONError(w, http.StatusBadRequest, "error decoding parameters")
 		return
 	}
 
 	user, err := c.queries.CreateUser(r.Context(), userEmail.Email)
 	if err != nil {
-		log.Printf("An eror occured: %s", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error":"Something went wrong"}`))
+		log.Printf("An error occured: %s", err)
+		writeJSONError(w, http.StatusInternalServerError, "error creating chirp")
 		return
 	}
 
@@ -55,9 +53,7 @@ func (c *apiConfig) createUserHandler(w http.ResponseWriter, r *http.Request) {
 	dat, err := json.Marshal(newUser)
 	if err != nil {
 		log.Printf("Error marshaling json: %s", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error":"Something went wrong"}`))
+		writeJSONError(w, http.StatusInternalServerError, "error marshaling json")
 		return
 	}
 
@@ -66,13 +62,11 @@ func (c *apiConfig) createUserHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(dat)
 }
 
-func (c *apiConfig) getChirpsHandler(w http.ResponseWriter, r *http.Request) {
+func (c *apiConfig) getAllChirpsHandler(w http.ResponseWriter, r *http.Request) {
 	data, err := c.queries.GetAllChirps(r.Context())
 	if err != nil {
-		log.Printf("An eror occured: %s", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error":"Something went wrong"}`))
+		log.Printf("An error occured: %s", err)
+		writeJSONError(w, http.StatusInternalServerError, "error retrieving chirps")
 		return
 	}
 
@@ -91,13 +85,50 @@ func (c *apiConfig) getChirpsHandler(w http.ResponseWriter, r *http.Request) {
 	dat, err := json.Marshal(chirps)
 	if err != nil {
 		log.Printf("Error marshaling json: %s", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error":"Something went wrong"}`))
+		writeJSONError(w, http.StatusInternalServerError, "error marshaling json")
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(dat)
+}
+
+func (c *apiConfig) getChirpHandler(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("chirpID")
+	chirpId, err := uuid.Parse(idStr)
+	if err != nil {
+		log.Printf("An error occured: %s", err)
+		writeJSONError(w, http.StatusBadRequest, "invalid UUID")
+		return
+	}
+	chirp, err := c.queries.GetChirp(r.Context(), chirpId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			writeJSONError(w, http.StatusNotFound, "chirp not found")
+			return
+		}
+		log.Printf("An error occured: %s", err)
+		writeJSONError(w, http.StatusInternalServerError, "error retrieving chirp")
+		return
+	}
+
+	jsonChirp := Chirp{
+		ID:        chirp.ID,
+		CreatedAt: chirp.CreatedAt,
+		UpdatedAt: chirp.UpdatedAt,
+		Body:      chirp.Body,
+		UserID:    chirp.UserID,
+	}
+
+	dat, err := json.Marshal(jsonChirp)
+	if err != nil {
+		log.Printf("Error marshaling json: %s", err)
+		writeJSONError(w, http.StatusInternalServerError, "error marshaling json")
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(dat)
+
 }

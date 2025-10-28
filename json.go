@@ -1,6 +1,10 @@
 package main
 
 import (
+	"encoding/json"
+	"log"
+	"net/http"
+
 	"github.com/google/uuid"
 )
 
@@ -21,6 +25,15 @@ type emailParams struct {
 	Email string `json:"email"`
 }
 
-// type validResp struct {
-// 	Valid bool `json:"valid"`
-// }
+func writeJSONError(w http.ResponseWriter, status int, msg string) {
+	w.Header().Set("Content-Type", "application/json")
+
+	dat, err := json.Marshal(errorResp{Error: msg})
+	if err != nil {
+		log.Printf("Error marshalling JSON: %s\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(status)
+	w.Write(dat)
+}
