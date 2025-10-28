@@ -65,3 +65,39 @@ func (c *apiConfig) createUserHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	w.Write(dat)
 }
+
+func (c *apiConfig) getChirpsHandler(w http.ResponseWriter, r *http.Request) {
+	data, err := c.queries.GetAllChirps(r.Context())
+	if err != nil {
+		log.Printf("An eror occured: %s", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":"Something went wrong"}`))
+		return
+	}
+
+	chirps := make([]Chirp, 0, len(data))
+	for _, ch := range data {
+		newChirp := Chirp{
+			ID:        ch.ID,
+			CreatedAt: ch.CreatedAt,
+			UpdatedAt: ch.UpdatedAt,
+			Body:      ch.Body,
+			UserID:    ch.UserID,
+		}
+		chirps = append(chirps, newChirp)
+	}
+
+	dat, err := json.Marshal(chirps)
+	if err != nil {
+		log.Printf("Error marshaling json: %s", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":"Something went wrong"}`))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(dat)
+}
