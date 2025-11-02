@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Gilgalad195/chirpy/internal/auth"
+	"github.com/Gilgalad195/chirpy/internal/database"
 	"github.com/google/uuid"
 )
 
@@ -27,19 +29,36 @@ type Chirp struct {
 }
 
 func (c *apiConfig) createUserHandler(w http.ResponseWriter, r *http.Request) {
-	userEmail := emailParams{}
+	userCreds := userParams{}
 	decoder := json.NewDecoder(r.Body)
-	err := decoder.Decode(&userEmail)
+	err := decoder.Decode(&userCreds)
 	if err != nil {
 		log.Printf("Error decoding parameters: %s", err)
 		writeJSONError(w, http.StatusBadRequest, "error decoding parameters")
 		return
 	}
 
-	user, err := c.queries.CreateUser(r.Context(), userEmail.Email)
+	if userCreds.Email == "" || userCreds.Password == "" {
+		writeJSONError(w, http.StatusBadRequest, "Email and Password are required.")
+		return
+	}
+
+	hashedPass, err := auth.HashPassword(userCreds.Password)
+	if err != nil {
+		log.Printf("error hashing password: %s", err)
+		writeJSONError(w, http.StatusInternalServerError, "A server error occured")
+		return
+	}
+
+	createUserParams := database.CreateUserParams{
+		Email:          userCreds.Email,
+		HashedPassword: hashedPass,
+	}
+
+	user, err := c.queries.CreateUser(r.Context(), createUserParams)
 	if err != nil {
 		log.Printf("An error occured: %s", err)
-		writeJSONError(w, http.StatusInternalServerError, "error creating chirp")
+		writeJSONError(w, http.StatusInternalServerError, "error creating user")
 		return
 	}
 
