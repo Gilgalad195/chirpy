@@ -21,9 +21,10 @@ type errorResp struct {
 	Error string `json:"error"`
 }
 
-type userParams struct {
-	Password string `json:"password"`
-	Email    string `json:"email"`
+type loginParams struct {
+	Password         string `json:"password"`
+	Email            string `json:"email"`
+	ExpiresInSeconds int    `json:"expires_in_seconds"`
 }
 
 func writeJSONError(w http.ResponseWriter, status int, msg string) {

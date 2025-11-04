@@ -18,6 +18,7 @@ type User struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	Email     string    `json:"email"`
+	Token     string    `json:"token"`
 }
 
 type Chirp struct {
@@ -29,35 +30,35 @@ type Chirp struct {
 }
 
 func (c *apiConfig) createUserHandler(w http.ResponseWriter, r *http.Request) {
-	userCreds := userParams{}
+	loginCreds := loginParams{}
 	decoder := json.NewDecoder(r.Body)
-	err := decoder.Decode(&userCreds)
+	err := decoder.Decode(&loginCreds)
 	if err != nil {
-		log.Printf("Error decoding parameters: %s", err)
+		log.Printf("Error decoding parameters: %v", err)
 		writeJSONError(w, http.StatusBadRequest, "error decoding parameters")
 		return
 	}
 
-	if userCreds.Email == "" || userCreds.Password == "" {
+	if loginCreds.Email == "" || loginCreds.Password == "" {
 		writeJSONError(w, http.StatusBadRequest, "Email and Password are required.")
 		return
 	}
 
-	hashedPass, err := auth.HashPassword(userCreds.Password)
+	hashedPass, err := auth.HashPassword(loginCreds.Password)
 	if err != nil {
-		log.Printf("error hashing password: %s", err)
+		log.Printf("error hashing password: %v", err)
 		writeJSONError(w, http.StatusInternalServerError, "A server error occured")
 		return
 	}
 
 	createUserParams := database.CreateUserParams{
-		Email:          userCreds.Email,
+		Email:          loginCreds.Email,
 		HashedPassword: hashedPass,
 	}
 
 	user, err := c.queries.CreateUser(r.Context(), createUserParams)
 	if err != nil {
-		log.Printf("An error occured: %s", err)
+		log.Printf("An error occured: %v", err)
 		writeJSONError(w, http.StatusInternalServerError, "error creating user")
 		return
 	}
@@ -71,7 +72,7 @@ func (c *apiConfig) createUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	dat, err := json.Marshal(newUser)
 	if err != nil {
-		log.Printf("Error marshaling json: %s", err)
+		log.Printf("Error marshaling json: %v", err)
 		writeJSONError(w, http.StatusInternalServerError, "error marshaling json")
 		return
 	}
@@ -84,7 +85,7 @@ func (c *apiConfig) createUserHandler(w http.ResponseWriter, r *http.Request) {
 func (c *apiConfig) getAllChirpsHandler(w http.ResponseWriter, r *http.Request) {
 	data, err := c.queries.GetAllChirps(r.Context())
 	if err != nil {
-		log.Printf("An error occured: %s", err)
+		log.Printf("An error occured: %v", err)
 		writeJSONError(w, http.StatusInternalServerError, "error retrieving chirps")
 		return
 	}
@@ -103,7 +104,7 @@ func (c *apiConfig) getAllChirpsHandler(w http.ResponseWriter, r *http.Request) 
 
 	dat, err := json.Marshal(chirps)
 	if err != nil {
-		log.Printf("Error marshaling json: %s", err)
+		log.Printf("Error marshaling json: %v", err)
 		writeJSONError(w, http.StatusInternalServerError, "error marshaling json")
 		return
 	}
@@ -117,7 +118,7 @@ func (c *apiConfig) getChirpHandler(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("chirpID")
 	chirpId, err := uuid.Parse(idStr)
 	if err != nil {
-		log.Printf("An error occured: %s", err)
+		log.Printf("An error occured: %v", err)
 		writeJSONError(w, http.StatusBadRequest, "invalid UUID")
 		return
 	}
@@ -127,7 +128,7 @@ func (c *apiConfig) getChirpHandler(w http.ResponseWriter, r *http.Request) {
 			writeJSONError(w, http.StatusNotFound, "chirp not found")
 			return
 		}
-		log.Printf("An error occured: %s", err)
+		log.Printf("An error occured: %v", err)
 		writeJSONError(w, http.StatusInternalServerError, "error retrieving chirp")
 		return
 	}
@@ -142,7 +143,7 @@ func (c *apiConfig) getChirpHandler(w http.ResponseWriter, r *http.Request) {
 
 	dat, err := json.Marshal(jsonChirp)
 	if err != nil {
-		log.Printf("Error marshaling json: %s", err)
+		log.Printf("Error marshaling json: %v", err)
 		writeJSONError(w, http.StatusInternalServerError, "error marshaling json")
 	}
 

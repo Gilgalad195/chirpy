@@ -4,30 +4,34 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/Gilgalad195/chirpy/internal/auth"
 )
 
 func (c *apiConfig) loginHandler(w http.ResponseWriter, r *http.Request) {
-	userCreds := userParams{}
+	loginCreds := loginParams{}
 	decoder := json.NewDecoder(r.Body)
-	err := decoder.Decode(&userCreds)
+	err := decoder.Decode(&loginCreds)
 	if err != nil {
-		log.Printf("Error decoding parameters: %s", err)
+		log.Printf("Error decoding parameters: %v", err)
 		writeJSONError(w, http.StatusBadRequest, "error decoding parameters")
 		return
 	}
+	if loginCreds.ExpiresInSeconds <= 0 || loginCreds.ExpiresInSeconds > 3600 {
+		loginCreds.ExpiresInSeconds = 3600
+	}
 
-	user, err := c.queries.GetUser(r.Context(), userCreds.Email)
+	user, err := c.queries.GetUser(r.Context(), loginCreds.Email)
 	if err != nil {
-		log.Printf("Error getting user: %s", err)
+		log.Printf("Error getting user: %v", err)
 		writeJSONError(w, http.StatusUnauthorized, "Incorrect email or password")
 		return
 	}
 
-	match, err := auth.CheckPasswordHash(userCreds.Password, user.HashedPassword)
+	match, err := auth.CheckPasswordHash(loginCreds.Password, user.HashedPassword)
 	if err != nil {
-		log.Printf("Error checking password: %s", err)
+		log.Printf("Error checking password: %v", err)
 		writeJSONError(w, http.StatusUnauthorized, "Incorrect email or password")
 		return
 	}
@@ -37,16 +41,24 @@ func (c *apiConfig) loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	token, err := auth.MakeJWT(user.ID, c.secret, time.Duration(loginCreds.ExpiresInSeconds)*time.Second)
+	if err != nil {
+		log.Printf("Error creating user token: %v", err)
+		writeJSONError(w, http.StatusInternalServerError, "An error occured")
+		return
+	}
+
 	jsonUser := User{
 		ID:        user.ID,
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 		Email:     user.Email,
+		Token:     token,
 	}
 
 	dat, err := json.Marshal(jsonUser)
 	if err != nil {
-		log.Printf("Error marshaling json: %s", err)
+		log.Printf("Error marshaling json: %v", err)
 		writeJSONError(w, http.StatusInternalServerError, "error marshaling json")
 		return
 	}

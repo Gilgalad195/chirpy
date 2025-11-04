@@ -16,6 +16,7 @@ type apiConfig struct {
 	fileserverHits atomic.Int32
 	queries        *database.Queries
 	platform       string
+	secret         string
 }
 
 func main() {
@@ -26,6 +27,8 @@ func main() {
 	godotenv.Load()
 	dbURL := os.Getenv("DB_URL")
 	apiCfg.platform = os.Getenv("PLATFORM")
+	apiCfg.secret = os.Getenv("JWT_SECRET")
+
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Printf("Unable to connect to database: %s", err)
