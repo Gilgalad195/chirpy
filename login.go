@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Gilgalad195/chirpy/internal/auth"
+	"github.com/Gilgalad195/chirpy/internal/database"
 )
 
 func (c *apiConfig) loginHandler(w http.ResponseWriter, r *http.Request) {
@@ -41,22 +42,43 @@ func (c *apiConfig) loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := auth.MakeJWT(user.ID, c.secret, time.Duration(loginCreds.ExpiresInSeconds)*time.Second)
+	accessToken, err := auth.MakeJWT(user.ID, c.secret, time.Duration(loginCreds.ExpiresInSeconds)*time.Second)
 	if err != nil {
 		log.Printf("Error creating user token: %v", err)
 		writeJSONError(w, http.StatusInternalServerError, "An error occured")
 		return
 	}
 
-	jsonUser := User{
-		ID:        user.ID,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-		Email:     user.Email,
-		Token:     token,
+	token, err := auth.MakeRefreshToken()
+	if err != nil {
+		log.Printf("Error generating refresh token: %v", err)
+		writeJSONError(w, http.StatusInternalServerError, "An error occurred")
+		return
 	}
 
-	dat, err := json.Marshal(jsonUser)
+	refreshTokenParams := database.CreateRefreshTokenParams{
+		Token:     token,
+		UserID:    user.ID,
+		ExpiresAt: time.Now().AddDate(0, 0, 60),
+	}
+
+	refreshToken, err := c.queries.CreateRefreshToken(r.Context(), refreshTokenParams)
+	if err != nil {
+		log.Printf("Error creating refresh token: %v", err)
+		writeJSONError(w, http.StatusInternalServerError, "An error occured")
+		return
+	}
+
+	jsonResponse := User{
+		ID:           user.ID,
+		CreatedAt:    user.CreatedAt,
+		UpdatedAt:    user.UpdatedAt,
+		Email:        user.Email,
+		Token:        accessToken,
+		RefreshToken: refreshToken.Token,
+	}
+
+	dat, err := json.Marshal(jsonResponse)
 	if err != nil {
 		log.Printf("Error marshaling json: %v", err)
 		writeJSONError(w, http.StatusInternalServerError, "error marshaling json")
