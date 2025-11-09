@@ -27,6 +27,10 @@ type loginParams struct {
 	ExpiresInSeconds int    `json:"expires_in_seconds"`
 }
 
+type tokenParams struct {
+	Token string `json:"token"`
+}
+
 func writeJSONError(w http.ResponseWriter, status int, msg string) {
 	w.Header().Set("Content-Type", "application/json")
 

@@ -9,3 +9,17 @@ VALUES (
     NULL
 )
 RETURNING *;
+
+-- name: GetUserFromRefreshToken :one
+SELECT users.*
+FROM refresh_tokens
+INNER JOIN users
+ON refresh_tokens.user_id = users.id
+WHERE refresh_tokens.token = $1
+AND refresh_tokens.revoked_at IS NULL
+AND refresh_tokens.expires_at > NOW();
+
+-- name: RevokeRefreshToken :exec
+UPDATE refresh_tokens 
+SET updated_at = NOW(), revoked_at = NOW()
+WHERE token = $1 AND revoked_at is NULL;

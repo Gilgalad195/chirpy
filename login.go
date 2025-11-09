@@ -19,9 +19,6 @@ func (c *apiConfig) loginHandler(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusBadRequest, "error decoding parameters")
 		return
 	}
-	if loginCreds.ExpiresInSeconds <= 0 || loginCreds.ExpiresInSeconds > 3600 {
-		loginCreds.ExpiresInSeconds = 3600
-	}
 
 	user, err := c.queries.GetUser(r.Context(), loginCreds.Email)
 	if err != nil {
@@ -42,7 +39,7 @@ func (c *apiConfig) loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accessToken, err := auth.MakeJWT(user.ID, c.secret, time.Duration(loginCreds.ExpiresInSeconds)*time.Second)
+	accessToken, err := auth.MakeJWT(user.ID, c.secret, 60*time.Minute)
 	if err != nil {
 		log.Printf("Error creating user token: %v", err)
 		writeJSONError(w, http.StatusInternalServerError, "An error occured")
